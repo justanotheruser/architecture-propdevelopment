@@ -1,0 +1,18 @@
+@startuml
+
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+LAYOUT_LANDSCAPE()
+
+
+title PropDevelopment — Context diagram
+
+Person(owner, "Собственник", "Житель дома, использует мобильное приложение")
+System(pd, "PropDevelopment", "Экосистема сервисов для собственников: ЖКУ, уведомления, умный дом")
+System_Ext(sh_partner, "Платформа партнёра 'Умный дом'", "Внешняя платформа: интеллектуальный домофон (видео, биометрия) и шлагбаум (распознавание номеров)")
+
+Rel(owner, pd, "Использует", "HTTPS")
+Rel(pd, sh_partner, "Управление доступами, команды управления, получение событий", "API (OAuth2 + mTLS)")
+Rel(sh_partner, pd, "События: проход, звонок, распознавание, ошибки", "Webhook")
+Rel(owner, sh_partner, "Показывает лицо/машину")
+
+@enduml

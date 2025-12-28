@@ -3,13 +3,13 @@
 !includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
 LAYOUT_LANDSCAPE()
 
-title PropDevelopment — Container view (security audit case)
+title PropDevelopment — схема контейнеров
 
 ' People
 Person(client, "Клиент", "Потенциальный покупатель жилья")
 Person(owner, "Собственник", "Владелец квартиры (житель)")
 Person(manager, "Менеджер", "Работает с клиентами и объектами недвижимости, администрирует онлайн-сделки")
-'Непонятно, чем отличается от "Аналитик BI")
+'Непонятно, чем отличается от "Аналитик BI"
 'Person(ba, "Бизнес-аналитик", "Оптимизирует процессы и развивает прикладные бизнес-системы. Администрирует системы.")
 Person(accountant, "Бухгалтер", "Ведёт бухгалтерский учёт")
 Person(bi_user, "Аналитик BI", "Анализирует данные и готовит отчётность")
@@ -88,7 +88,6 @@ Lay_R(accountant, fin)
 Lay_R(fin, data)
 Lay_L(data, fin)
 
-' --- Main relationships (high level, reconstructed) ---
 
 ' External users -> showcases
 Rel_D(client, sales_showcase, "Использует", "HTTPS")
