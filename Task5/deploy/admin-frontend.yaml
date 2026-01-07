@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: admin-front-end-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: admin-front-end-app
+  template:
+    metadata:
+      labels:
+        app: admin-front-end-app
+        role: admin-front-end
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.25
+          ports:
+            - containerPort: 80

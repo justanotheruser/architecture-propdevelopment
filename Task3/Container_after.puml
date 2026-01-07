@@ -1,0 +1,52 @@
+@startuml
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+LAYOUT_TOP_DOWN()
+
+title PropDevelopment — Container diagram (Smart Home integration)
+
+Person(owner, "Собственник", "Житель/владелец квартиры")
+Person(bi_user, "Аналитик BI", "Анализирует данные и готовит отчётность")
+System_Ext(sh_partner, "Платформа партнёра 'Умный дом'", "Домофон (видео+биометрия), шлагбаум (распознавание номеров)")
+
+System_Boundary(prop, "PropDevelopment") {
+
+  Container_Boundary(tenant, "Группа сервисов ЖКУ") {
+    Container(tenant_app, "Мобильное приложение собственника", "iOS / Android", "Управление ЖКУ и сервисами 'Умный дом'")
+    Container(tenant_core, "tenant-core-app", "Kotlin / Spring Boot", "Бизнес-логика сервисов собственников")
+    ContainerDb(tenant_db, "tenant-core-db", "PostgreSQL", "Данные сервисов ЖКУ")
+    Container(tenant_crm, "CRM собственников", "Kotlin / Spring Boot",  "Данные собственников и их прав доступа")
+    ContainerDb(crm_db, "crm-tenant-db", "PostgreSQL", "Персональные данные собственников")
+    ContainerDb(redis, "redis", "Redis", "Хранит correlationId")
+
+    Container(sh_integration, "smart-home-integration-service", "Kotlin / Spring Boot",  "Интеграционный слой с платформой партнёра: настройка профиля, получение событий")
+    ContainerDb(sh_db, "smart-home-db", "PostgreSQL", "События (доступ разрешён/запрещён, изменение профиля); авточистка событий старше недели")
+  }
+
+  Container_Boundary(data, "Данные (хранилище, DWH)") {
+    Container(data_storage, "Data Storage", "Object Storage / HDFS", "Cобытия для аналитики (без PII), контроль схем и качества")
+    ContainerDb(dwh_gp, "DWH (Greenplum)", "Greenplum",  "Аналитическое хранилище и витрины. \nДоступ к данным через представления/маскирование (например, PostgreSQL Anonymizer) при необходимости.")
+  }
+}
+
+Rel(owner, tenant_app, "Использует", "HTTPS")
+
+Rel(tenant_app, tenant_core, "API запросы", "HTTPS")
+Rel(tenant_core, tenant_db, "Чтение/запись", "JDBC")
+Rel(tenant_core, tenant_crm, "Получение данных собственника", "REST")
+Rel(tenant_crm, crm_db, "Чтение/запись", "JDBC")
+
+Rel(tenant_core, sh_integration, "Команды управления, выдача/отзыв доступов", "REST")
+' Например, пользователь загрузил новое фото, "Умный дом" обрабатывает его асинхронно, и может через вебхук ответить, что
+' качество слишком плохое. Без correlationId будет непонятно, какой сервис должен обработать ответ + может нарушиться порядок
+Rel(sh_integration, redis, "Читает/пишет correlationId для обработки асинхронных ответов")
+Rel(sh_integration, sh_partner, "Управление устройствами и доступами", "API (OAuth2 + mTLS)")
+
+Rel(sh_partner, sh_integration, "События устройств, асинхронные ответы", "Webhook")
+
+Rel(sh_integration, sh_db, "Сохранение метаданных и событий", "JDBC")
+
+Rel(sh_integration, data_storage, "События (без PII/биометрии)", "ETL/Stream")
+Rel(data_storage, dwh_gp, "Загрузка и витрины", "ETL/Batch")
+Rel(bi_user, dwh_gp, "Анализ/отчёты", "")
+
+@enduml

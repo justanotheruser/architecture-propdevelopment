@@ -1,0 +1,143 @@
+@startuml
+
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+LAYOUT_LANDSCAPE()
+
+title PropDevelopment — схема контейнеров
+
+' People
+Person(client, "Клиент", "Потенциальный покупатель жилья")
+Person(owner, "Собственник", "Владелец квартиры (житель)")
+Person(manager, "Менеджер", "Работает с клиентами и объектами недвижимости, администрирует онлайн-сделки")
+'Непонятно, чем отличается от "Аналитик BI"
+'Person(ba, "Бизнес-аналитик", "Оптимизирует процессы и развивает прикладные бизнес-системы. Администрирует системы.")
+Person(accountant, "Бухгалтер", "Ведёт бухгалтерский учёт")
+Person(bi_user, "Аналитик BI", "Анализирует данные и готовит отчётность")
+
+System_Ext(state_reg, "Государственные регистрационные органы", "Отвечают за регистрационные действия с объектами недвижимости")
+System_Ext(uk_supplier, "Поставщик ресурсов ЖКХ")
+System_Ext(payment_system, "Платёжная система", "Провайдер онлайн-платежей")
+
+System_Boundary(prop, "PropDevelopment (приватное облако / ЦОД / гибрид)") {
+
+  ' ===== ЖКУ domain =====
+  Container_Boundary(tenant, "Группа сервисов ЖКУ") {
+    Container(tenant_showcase, "Витрина сервисов для собственников", "Mobile app (iOS, Android)", "Мобильные приложения для собственников")
+    Container(tenant_core_app, "tenant-core-app", "Kotlin, Spring Boot", "Приложение для предоставления услуг собственникам")
+    ContainerDb(tenant_core_db, "tenant-core-db", "PostgreSQL", "БД услуг ЖКХ по собственникам")
+
+    Container(tenant_crm, "CRM", "Kotlin, Spring Boot", "Система управления данными собственников")
+    ContainerDb(crm_tenant_db, "crm-tenant-db", "PostgreSQL", "Данные CRM собственников")
+  }
+
+  ' ===== Sales domain =====
+  Container_Boundary(sales, "Группа сервисов для продаж") {
+
+    Container(sales_showcase, "Витрина продаж", "JavaScript, React", "Витрина для подбора и бронирования недвижимости")
+    Container(client_mart_app, "client-mart-app", "Kotlin, SpringBoot", "Приложение для:\n-предоставления информации об объектах недвижимости\n-проведения онлайн-сделок")
+    Container(client_tour_app, "client-tour-app", "Kotlin, Spring Boot", "Приложение для проведения 3D-тура по объекту недвижимости")
+    Container(client_mart_estate_app, "client-mart-estate-app", "Kotlin, Spring Boot", "Приложение для управления информацией об объектах недвижимости")
+    Container(client_crm, "client-crm-app", "Spring Boot, Elastic Search, Dynamic CRM", "Система управления клиентскими данными")
+
+    ContainerDb(client_mart_db, "client-mart-db", "PostgreSQL", "Информация об объектах недвижимости и сделках по ним")
+    ContainerDb(client_tour_db, "client-tour-db", "PostgreSQL", "Данные для проведения онлайн-тура")
+    ContainerDb(client_estate_db, "client-mart-estate-db", "PostgreSQL", "Данные об объектах")
+    ContainerDb(crm_db, "crm-db", "MS SQL", "База данных системы CRM")
+  }
+
+  ' ===== Auth domain (shared) =====
+  Container_Boundary(auth, "Сервисы аутентификации") {
+    Container(auth_service, "auth-service-1", "Keycloak", "Сервисы аутентификации пользователей")
+    ContainerDb(auth_db, "auth-db-1", "PostgreSQL", "Учётные записи и сессии")
+    ' Было "Служба каталогов, которая обслуживает финансовые сервисы")
+    Container(ad, "Active Directory", "MS Active Directory", "Служба каталогов (внутренние пользователи)")
+
+  }
+
+  ' ===== Finance domain =====
+  Container_Boundary(fin, "Финансы") {
+    ' Вот тут на картинке вместо "Kotlin, Spring Boot" было "Keycloak"
+    Container(accountant_service, "accountant-service", "Kotlin, Spring Boot", "Система бухгалтерского учёта")
+    ' Тут на картинке вместо "Данные бухгалтерского учёта" было "База данных сервиса аутентификации пользователей"
+    ContainerDb(accountant_db, "accountant-db", "PostgreSQL", "Данные бухгалтерского учёта")
+    Container(ad_fin, "Active Directory", "MS Active Directory", "Служба каталогов, которая обслуживает прикладные бизнес-системы и системы обработки данных")
+  }
+
+  ' ===== Data domain =====
+  Container_Boundary(data, "Дата (хранилище, BI, отчётность)") {
+    Container(data_storage, "Хранилище данных", "Greenplum", "Единое хранилище данных для систем компании")
+    ContainerDb(dwh, "DWH хранилище", "Data Warehouse", "Физическое хранение данных")
+  }
+}
+
+Lay_U(client, owner)
+Lay_R(sales, tenant)
+Lay_R(client, sales)
+Lay_R(owner, tenant)
+Lay_R(tenant, auth)
+
+
+Lay_D(sales, ad)
+Lay_Distance(sales, ad, 3)
+
+Lay_D(sales, data)
+Lay_Distance(sales, data, 4)
+Lay_D(sales, fin)
+
+Lay_R(accountant, fin)
+Lay_R(fin, data)
+Lay_L(data, fin)
+
+
+' External users -> showcases
+Rel_D(client, sales_showcase, "Использует", "HTTPS")
+Rel_D(owner, tenant_showcase, "Использует", "HTTPS")
+
+' Internal users
+Rel(manager, client_crm, "Работает", "HTTPS/SSO")
+Rel(bi_user, client_crm, "Работает", "HTTPS/SSO")
+Rel(accountant, accountant_service, "Работает", "HTTPS/SSO")
+Rel(bi_user, data_storage, "Анализ/отчёты", "")
+
+' Sales internal flows
+Rel(sales_showcase, client_mart_estate_app, "Запрашивает данные по объектам недвижимости", "REST")
+Rel(sales_showcase, client_tour_app, "", "REST")
+Rel(sales_showcase, client_mart_app, "", "REST")
+Rel(client_mart_app, client_crm, "Регистрация клиента\nКарточка клиента\nПрофиль клиента", "REST")
+Rel(client_tour_app, client_tour_db, "Читает/пишет", "JDBC")
+Rel(client_mart_app, client_mart_db, "", "JDBC")
+Rel(client_mart_estate_app, client_estate_db, "Читает/пишет", "JDBC")
+Rel(client_crm, crm_db, "", "JDBC")
+Rel(client_crm, client_tour_app, "Публикация каталога объектов", "Kafka")
+Rel(client_crm, client_mart_app, "Публикация каталога объектов", "Kafka")
+
+' Auth
+Rel(sales_showcase, auth_service, "Регистрация/Аутентификация", "REST")
+'Rel(client_tour_app, auth_service, "Аутентификация", "OAuth2/OIDC")
+Rel(tenant_showcase, auth_service, "Аутентификация", "REST")
+Rel(auth_service, auth_db, "")
+Rel(client_crm, ad, "Аутентификация менеджеров", "OAuth2/OIDC")
+Rel(tenant_crm, ad, "Аутентификация менеджеров", "OAuth2/OIDC")
+'Rel(auth_service, ad, "SSO для сотрудников", "LDAP/Kerberos")
+Rel(accountant_service, ad_fin, "SSO", "LDAP/Kerberos")
+Rel(bi_user, ad, "Аутентификация бизнес-аналитика", "OAuth2/OIDC")
+
+' Tenant flows
+Rel(tenant_showcase, tenant_core_app, "", "REST, WS")
+Rel(tenant_showcase, tenant_crm, "", "REST")
+Rel(tenant_core_app, tenant_core_db, "Читает/пишет", "JDBC")
+Rel(tenant_crm, crm_tenant_db, "", "JDBC")
+
+' Partner integrations (payments & ЖКХ)
+Rel(tenant_core_app, uk_supplier, "Запросы/обмен данными", "API (REST)")
+Rel(tenant_core_app, payment_system, "Платежи", "API (REST)")
+Rel(client_mart_app, state_reg, "СМЭВ", "SOAP")
+
+' Data domain ingestion
+Rel(client_crm, data_storage, "Передача сырых данных", "ETL/CDC")
+Rel(tenant_crm, data_storage, "Передача сырых данных", "ETL/CDC")
+'Rel(accountant_service, data_storage, "Передача финансовых данных", "ETL/Batch")
+Rel(data_storage, dwh, "Загрузка", "ETL")
+Rel(dwh, bi, "Витрины/запросы", "SQL/BI connector")
+
+@enduml

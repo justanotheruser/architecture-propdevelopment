@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: admin-back-end-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: admin-back-end-api
+  template:
+    metadata:
+      labels:
+        app: admin-back-end-api
+        role: admin-back-end-api
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.25
+          ports:
+            - containerPort: 80
